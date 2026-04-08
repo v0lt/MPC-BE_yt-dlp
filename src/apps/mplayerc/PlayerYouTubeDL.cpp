@@ -131,6 +131,103 @@ namespace YT_DLP
 		return true;
 	}
 
+	struct yt_vformat_t {
+		CStringA id;
+		yt_protocol_type protocol = protocol_unknoun;
+		yt_vcodec_type codec = vcodec_unknoun;
+		int height = 0;
+		float bitrate = 0;
+		int fps = 0;
+		bool hdr = false;
+		bool with_audio = false;
+		CStringA url;
+		CStringA user_agent;
+	};
+
+	struct yt_aformat_t {
+		CStringA id;
+		yt_protocol_type protocol = protocol_unknoun;
+		yt_acodec_type codec = acodec_unknoun;
+		float bitrate = 0;
+		CStringA language;
+		int language_preference = 0;
+		CStringA url;
+		CStringA user_agent;
+	};
+
+	int vformat_cmp(const yt_vformat_t& a, const yt_vformat_t& b)
+	{
+		if (a.protocol < b.protocol) {
+			return -1;
+		}
+		if (a.protocol > b.protocol) {
+			return +1;
+		}
+
+		if (a.codec > b.codec) {
+			return -1;
+		}
+		if (a.codec < b.codec) {
+			return +1;
+		}
+
+		if (a.height > b.height) {
+			return -1;
+		}
+		if (a.height < b.height) {
+			return +1;
+		}
+
+		if (a.fps > b.fps) {
+			return -1;
+		}
+		if (a.fps < b.fps) {
+			return +1;
+		}
+
+		if (a.hdr > b.hdr) {
+			return -1;
+		}
+		if (a.hdr < b.hdr) {
+			return +1;
+		}
+
+		if (a.bitrate > b.bitrate) {
+			return -1;
+		}
+		if (a.bitrate < b.bitrate) {
+			return +1;
+		}
+
+		return 0;
+	}
+
+	int aformat_cmp(const yt_aformat_t& a, const yt_aformat_t& b)
+	{
+		if (a.protocol < b.protocol) {
+			return -1;
+		}
+		if (a.protocol > b.protocol) {
+			return +1;
+		}
+
+		if (a.codec > b.codec) {
+			return -1;
+		}
+		if (a.codec < b.codec) {
+			return +1;
+		}
+
+		if (a.bitrate > b.bitrate) {
+			return -1;
+		}
+		if (a.bitrate < b.bitrate) {
+			return +1;
+		}
+
+		return 0;
+	}
+
 	static bool IsVideoFormat(const rapidjson::Value& format)
 	{
 		CStringA value_str;
@@ -154,6 +251,244 @@ namespace YT_DLP
 		}
 		return false;
 	}
+
+	void GetFormatsInfo(const rapidjson::Value* formats, const bool getUserAgent,
+		std::vector<yt_vformat_t>& vformats, std::vector<yt_aformat_t>& aformats)
+	{
+		CStringA value_str;
+		int   value_int = 0;
+		float value_float = 0.0f;
+
+		bool vcodec_defined = false;
+		bool acodec_defined = false;
+
+		for (const auto& format : formats->GetArray()) {
+			// mandatory parameters
+
+			CStringA format_id;
+			CStringA url;
+			yt_protocol_type protocol = protocol_unknoun;
+			int bitrate = 0;
+
+			if (!getJsonValue(format, "format_id", format_id)) {
+				ASSERT(0);
+				continue;
+			}
+
+			if (getJsonValue(format, "protocol", value_str)) {
+				if (StartsWith(value_str, "http_dash")) {
+					protocol = protocol_dash;
+				}
+				else if (StartsWith(value_str, "http")) {
+					protocol = protocol_http;
+				}
+				else if (StartsWith(value_str, "m3u8")) {
+					protocol = protocol_hls;
+				}
+				else {
+					ASSERT(0);
+					continue;
+				}
+			}
+			else {
+				ASSERT(0);
+				continue;
+			}
+
+			if (!getJsonValue(format, "url", url)) {
+				ASSERT(0);
+				continue;
+			}
+
+			// optional parameters
+
+			if (IsVideoFormat(format)) {
+				yt_vformat_t vformat;
+				vformat.id = format_id;
+				vformat.protocol = protocol;
+				vformat.url = url;
+				vformat.bitrate = bitrate;
+
+				getJsonValue(format, "height", vformat.height);
+
+				if (getJsonValue(format, "vcodec", value_str)) {
+					if (StartsWith(value_str, "avc1") || value_str == "h264") {
+						vformat.codec = vcodec_h264;
+					}
+					else if (StartsWith(value_str, "vp9")) {
+						vformat.codec = vcodec_vp9;
+					}
+					else if (StartsWith(value_str, "av01")) {
+						vformat.codec = vcodec_av1;
+					}
+					vcodec_defined = (vformat.codec != vcodec_unknoun);
+				}
+
+				if (getJsonValue(format, "fps", value_int) && value_int > 0) {
+					vformat.fps = value_int;
+				}
+
+				if (getJsonValue(format, "dynamic_range", value_str) && value_str != "SDR") {
+					vformat.hdr = true;
+				}
+
+				getJsonValue(format, "tbr", vformat.bitrate);
+				vformat.with_audio = FormatHasAudio(format);
+
+				if (getUserAgent) {
+					if (auto http_headers = GetJsonObject(format, "http_headers")) {
+						getJsonValue(format, "User-Agent", vformat.user_agent);
+					}
+				}
+
+				vformats.emplace_back(vformat);
+			}
+			else if (FormatHasAudio(format)) {
+				if (EndsWith(format_id, "-drc")) {
+					continue;
+				}
+
+				yt_aformat_t aformat;
+				aformat.id = format_id;
+				aformat.protocol = protocol;
+				aformat.url = url;
+				aformat.bitrate = bitrate;
+
+				if (getJsonValue(format, "acodec", value_str)) {
+					if (StartsWith(value_str, "mp4a")) {
+						aformat.codec = acodec_aac;
+					}
+					else if (StartsWith(value_str, "opus")) {
+						aformat.codec = acodec_opus;
+					}
+					acodec_defined = (aformat.codec != acodec_unknoun);
+				}
+
+				getJsonValue(format, "tbr", aformat.bitrate);
+
+				if (getUserAgent) {
+					if (auto http_headers = GetJsonObject(format, "http_headers")) {
+						getJsonValue(format, "User-Agent", aformat.user_agent);
+					}
+				}
+
+				aformats.emplace_back(aformat);
+			}
+		}
+
+		if (vcodec_defined) {
+			vformats.erase(std::remove_if(vformats.begin(), vformats.end(), [](yt_vformat_t v) { return v.codec == vcodec_unknoun; }), vformats.end());
+		}
+
+		if (acodec_defined) {
+			aformats.erase(std::remove_if(aformats.begin(), aformats.end(), [](yt_aformat_t a) { return a.codec == acodec_unknoun; }), aformats.end());
+		}
+
+		std::sort(vformats.begin(), vformats.end(), [](const yt_vformat_t& a, const yt_vformat_t& b) {
+			return (vformat_cmp(a, b) < 0);
+			});
+
+		std::sort(aformats.begin(), aformats.end(), [](const yt_aformat_t& a, const yt_aformat_t& b) {
+			return (aformat_cmp(a, b) < 0);
+			});
+	}
+
+	CStringW GetVFormatDesc(const yt_vformat_t& v)
+	{
+		CStringW str;
+
+		switch (v.protocol) {
+		case protocol_dash:
+			str = L"DASH ";
+			break;
+		case protocol_hls:
+			str = L"HLS ";
+			break;
+		}
+
+		switch (v.codec) {
+		case vcodec_h264:
+			str = L"H.264 ";
+			break;
+		case vcodec_vp9:
+			str = L"VP9 ";
+			break;
+		case vcodec_av1:
+			str = L"AV1 ";
+			break;
+		}
+
+		if (str.IsEmpty()) {
+			str = v.id;
+			str.AppendChar(' ');
+		}
+
+		if (v.height > 0) {
+			str.AppendFormat(L"%dp ", v.height);
+		}
+
+		if (v.fps >= 48) {
+			str.AppendFormat(L"%dfps ", v.fps);
+		}
+
+		if (v.hdr) {
+			str.Append(L"HDR ");
+		}
+
+		if (v.bitrate > 0) {
+			str.AppendFormat(L"%.0f kbps", v.bitrate);
+		}
+
+		str.TrimRight(' ');
+
+		return str;
+	}
+
+	CStringW GetAFormatDesc(const yt_aformat_t& a)
+	{
+		CStringW str;
+
+		switch (a.protocol) {
+		case protocol_dash:
+			str = L"DASH ";
+			break;
+		case protocol_hls:
+			str = L"HLS ";
+			break;
+		}
+
+		switch (a.codec) {
+		case acodec_aac:
+			str = L"AAC ";
+			break;
+		case acodec_opus:
+			str = L"OPUS ";
+			break;
+		}
+
+		if (str.IsEmpty()) {
+			str = a.id;
+			str.AppendChar(' ');
+		}
+
+		if (a.bitrate > 0) {
+			str.AppendFormat(L"%.0f kbps", a.bitrate);
+		}
+
+		str.TrimRight(' ');
+
+		return str;
+	}
+
+	struct yt_vformats_stats {
+		bool live = false;
+		bool containsDASH = false;
+		bool containsHLS = false;
+		int heightMin = INT_MAX;
+		int heightMax = 0;
+		int fpsMin = INT_MAX;
+		int fpsMax = 0;
+	};
 
 	bool Parse_URL(
 		const CStringW& url,        // input parameter
@@ -198,8 +533,69 @@ namespace YT_DLP
 		}
 
 		auto formats = GetJsonArray(doc, "formats");
-		if (!formats || formats->Empty()) {
+		if (!formats) {
 			return false;
+		}
+
+		std::vector<yt_vformat_t> vformats;
+		std::vector<yt_aformat_t> aformats;
+
+		GetFormatsInfo(formats, y_fields.userAgent.IsEmpty(), vformats, aformats);
+		if (vformats.empty() && aformats.empty()) {
+			return false;
+		}
+
+
+#ifdef _DEBUG
+		for (const auto& v : vformats) {
+			DLog(GetVFormatDesc(v));
+		}
+		for (const auto& a : aformats) {
+			DLog(GetAFormatDesc(a));
+		}
+#endif
+
+		yt_vformats_stats vstats = {};
+		{
+			CStringA liveStatus;
+			getJsonValue(doc, "live_status", liveStatus);
+			vstats.live = (liveStatus == "is_live");
+
+			for (const auto& v : vformats) {
+				switch (v.protocol) {
+				case protocol_dash:
+					vstats.containsDASH = true;
+					break;
+				case protocol_hls:
+					vstats.containsHLS = true;
+					break;
+				}
+
+				if (v.height > 0) {
+					if (v.height < vstats.heightMin) {
+						vstats.heightMin = v.height;
+					}
+					if (v.height > vstats.heightMax) {
+						vstats.heightMax = v.height;
+					}
+				}
+
+				if (v.fps > 0) {
+					if (v.fps < vstats.fpsMin) {
+						vstats.fpsMin = v.fps;
+					}
+					if (v.fps > vstats.fpsMax) {
+						vstats.fpsMax = v.fps;
+					}
+				}
+			}
+
+			if (vstats.heightMax == 0) {
+				vstats.heightMin = 0;
+			}
+			if (vstats.fpsMax == 0) {
+				vstats.fpsMin = 0;
+			}
 		}
 
 		bool bIsYoutube = Youtube::CheckURL(url);
