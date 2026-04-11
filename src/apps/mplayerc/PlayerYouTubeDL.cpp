@@ -164,10 +164,10 @@ namespace YT_DLP
 			return +1;
 		}
 
-		if (a.codec > b.codec) {
+		if (a.codec < b.codec) {
 			return -1;
 		}
-		if (a.codec < b.codec) {
+		if (a.codec > b.codec) {
 			return +1;
 		}
 
@@ -313,7 +313,6 @@ namespace YT_DLP
 					protocol = protocol_hls;
 				}
 				else {
-					ASSERT(0);
 					continue;
 				}
 			}
@@ -438,6 +437,9 @@ namespace YT_DLP
 		case vcodec_av1:
 			str.Append(L"AV1 ");
 			break;
+		case vcodec_unknoun:
+			str.Append(L"Video ");
+			break;
 		}
 
 		if (str.IsEmpty()) {
@@ -457,9 +459,21 @@ namespace YT_DLP
 			str.Append(L"HDR ");
 		}
 
-		if (v.bitrate > 0) {
-			str.AppendFormat(L"%.0f kbps", v.bitrate);
+		switch (v.audio) {
+		case acodec_aac:
+			str.Append(L"AAC ");
+			break;
+		case acodec_opus:
+			str.Append(L"OPUS ");
+			break;
+		case acodec_unknoun:
+			str.Append(L"Audio ");
+			break;
 		}
+
+		//if (v.bitrate > 0) {
+		//	str.AppendFormat(L"%.0f kbps", v.bitrate);
+		//}
 
 		str.TrimRight(' ');
 
@@ -485,6 +499,9 @@ namespace YT_DLP
 			break;
 		case acodec_opus:
 			str.Append(L"OPUS ");
+			break;
+		case acodec_unknoun:
+			str.Append(L"Audio ");
 			break;
 		}
 
