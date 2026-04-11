@@ -135,11 +135,11 @@ namespace YT_DLP
 		CStringA id;
 		yt_protocol_type protocol = protocol_unknoun;
 		yt_vcodec_type codec = vcodec_unknoun;
+		yt_acodec_type audio = acodec_none;
 		int height = 0;
 		float bitrate = 0;
 		int fps = 0;
 		bool hdr = false;
-		bool with_audio = false;
 		CStringA url;
 		CStringA user_agent;
 	};
@@ -252,6 +252,30 @@ namespace YT_DLP
 		return false;
 	}
 
+	yt_acodec_type GetAudioCodec(const rapidjson::Value& format)
+	{
+		yt_acodec_type acodec = acodec_none;
+
+		CStringA value_str;
+
+		if (getJsonValue(format, "acodec", value_str) && value_str != "none") {
+			if (StartsWith(value_str, "mp4a")) {
+				acodec = acodec_aac;
+			}
+			else if (StartsWith(value_str, "opus")) {
+				acodec = acodec_opus;
+			}
+			else {
+				acodec = acodec_unknoun;
+			}
+		}
+		else if (getJsonValue(format, "audio_ext", value_str) && value_str != "none") {
+			acodec = acodec_unknoun;
+		}
+
+		return acodec;
+	}
+
 	void GetFormatsInfo(const rapidjson::Value* formats, const bool getUserAgent,
 		std::vector<yt_vformat_t>& vformats, std::vector<yt_aformat_t>& aformats)
 	{
@@ -276,11 +300,14 @@ namespace YT_DLP
 			}
 
 			if (getJsonValue(format, "protocol", value_str)) {
-				if (StartsWith(value_str, "http_dash")) {
-					protocol = protocol_dash;
-				}
-				else if (StartsWith(value_str, "http")) {
-					protocol = protocol_http;
+				if (StartsWith(value_str, "http")) {
+					if (StartsWith(format_id, "dash")) {
+						protocol = protocol_dash;
+					} else if (getJsonValue(format, "container", value_str) && EndsWith(value_str, "_dash")) {
+						protocol = protocol_dash;
+					} else {
+						protocol = protocol_http;
+					}
 				}
 				else if (StartsWith(value_str, "m3u8")) {
 					protocol = protocol_hls;
@@ -333,7 +360,8 @@ namespace YT_DLP
 				}
 
 				getJsonValue(format, "tbr", vformat.bitrate);
-				vformat.with_audio = FormatHasAudio(format);
+
+				vformat.audio = GetAudioCodec(format);
 
 				if (getUserAgent) {
 					if (auto http_headers = GetJsonObject(format, "http_headers")) {
@@ -354,14 +382,9 @@ namespace YT_DLP
 				aformat.url = url;
 				aformat.bitrate = bitrate;
 
-				if (getJsonValue(format, "acodec", value_str)) {
-					if (StartsWith(value_str, "mp4a")) {
-						aformat.codec = acodec_aac;
-					}
-					else if (StartsWith(value_str, "opus")) {
-						aformat.codec = acodec_opus;
-					}
-					acodec_defined = (aformat.codec != acodec_unknoun);
+				aformat.codec = GetAudioCodec(format);
+				if (aformat.codec >= 0) {
+					acodec_defined = true;
 				}
 
 				getJsonValue(format, "tbr", aformat.bitrate);
@@ -376,10 +399,10 @@ namespace YT_DLP
 			}
 		}
 
+		// If some codecs are identified, then remove formats with unknown codecs.
 		if (vcodec_defined) {
 			vformats.erase(std::remove_if(vformats.begin(), vformats.end(), [](yt_vformat_t v) { return v.codec == vcodec_unknoun; }), vformats.end());
 		}
-
 		if (acodec_defined) {
 			aformats.erase(std::remove_if(aformats.begin(), aformats.end(), [](yt_aformat_t a) { return a.codec == acodec_unknoun; }), aformats.end());
 		}
@@ -387,7 +410,6 @@ namespace YT_DLP
 		std::sort(vformats.begin(), vformats.end(), [](const yt_vformat_t& a, const yt_vformat_t& b) {
 			return (vformat_cmp(a, b) < 0);
 			});
-
 		std::sort(aformats.begin(), aformats.end(), [](const yt_aformat_t& a, const yt_aformat_t& b) {
 			return (aformat_cmp(a, b) < 0);
 			});
@@ -408,13 +430,13 @@ namespace YT_DLP
 
 		switch (v.codec) {
 		case vcodec_h264:
-			str = L"H.264 ";
+			str.Append(L"H.264 ");
 			break;
 		case vcodec_vp9:
-			str = L"VP9 ";
+			str.Append(L"VP9 ");
 			break;
 		case vcodec_av1:
-			str = L"AV1 ";
+			str.Append(L"AV1 ");
 			break;
 		}
 
@@ -459,10 +481,10 @@ namespace YT_DLP
 
 		switch (a.codec) {
 		case acodec_aac:
-			str = L"AAC ";
+			str.Append(L"AAC ");
 			break;
 		case acodec_opus:
-			str = L"OPUS ";
+			str.Append(L"OPUS ");
 			break;
 		}
 

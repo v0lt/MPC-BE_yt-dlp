@@ -31,6 +31,7 @@ namespace YT_DLP
 		vcodec_av1,
 	};
 	enum yt_acodec_type {
+		acodec_none = -2,
 		acodec_unknoun = -1,
 		acodec_aac = 0,
 		acodec_opus,
