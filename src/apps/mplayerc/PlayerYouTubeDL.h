@@ -1,5 +1,5 @@
 /*
- * (C) 2018-2025 see Authors.txt
+ * (C) 2018-2026 see Authors.txt
  *
  * This file is part of MPC-BE.
  *
@@ -41,6 +41,32 @@ namespace YT_DLP
 		protocol_http = 0,
 		protocol_dash,
 		protocol_hls,
+	};
+
+	struct yt_vformat_t {
+		CStringA id;
+		yt_protocol_type protocol = protocol_unknoun;
+		yt_vcodec_type codec = vcodec_unknoun;
+		yt_acodec_type audio = acodec_none;
+		int height = 0;
+		float bitrate = 0;
+		int fps = 0;
+		bool hdr = false;
+		CStringA url;
+		CStringA user_agent;
+		CStringW desc;
+	};
+
+	struct yt_aformat_t {
+		CStringA id;
+		yt_protocol_type protocol = protocol_unknoun;
+		yt_acodec_type codec = acodec_unknoun;
+		float bitrate = 0;
+		CStringA language;
+		int language_preference = 0;
+		CStringA url;
+		CStringA user_agent;
+		CStringW desc;
 	};
 
 	bool Parse_URL(

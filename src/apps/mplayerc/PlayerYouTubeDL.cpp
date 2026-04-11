@@ -131,30 +131,6 @@ namespace YT_DLP
 		return true;
 	}
 
-	struct yt_vformat_t {
-		CStringA id;
-		yt_protocol_type protocol = protocol_unknoun;
-		yt_vcodec_type codec = vcodec_unknoun;
-		yt_acodec_type audio = acodec_none;
-		int height = 0;
-		float bitrate = 0;
-		int fps = 0;
-		bool hdr = false;
-		CStringA url;
-		CStringA user_agent;
-	};
-
-	struct yt_aformat_t {
-		CStringA id;
-		yt_protocol_type protocol = protocol_unknoun;
-		yt_acodec_type codec = acodec_unknoun;
-		float bitrate = 0;
-		CStringA language;
-		int language_preference = 0;
-		CStringA url;
-		CStringA user_agent;
-	};
-
 	int vformat_cmp(const yt_vformat_t& a, const yt_vformat_t& b)
 	{
 		if (a.protocol < b.protocol) {
@@ -275,6 +251,108 @@ namespace YT_DLP
 
 		return acodec;
 	}
+
+	void SetVFormatDesc(yt_vformat_t& v)
+	{
+		auto& desc = v.desc;
+
+		switch (v.protocol) {
+		case protocol_dash:
+			desc = L"DASH ";
+			break;
+		case protocol_hls:
+			desc = L"HLS ";
+			break;
+		default:
+			desc.Empty();
+		}
+
+		switch (v.codec) {
+		case vcodec_h264:
+			desc.Append(L"H.264 ");
+			break;
+		case vcodec_vp9:
+			desc.Append(L"VP9 ");
+			break;
+		case vcodec_av1:
+			desc.Append(L"AV1 ");
+			break;
+		case vcodec_unknoun:
+			desc.Append(L"Video ");
+			break;
+		}
+
+		if (desc.IsEmpty()) {
+			desc = v.id;
+			desc.AppendChar(' ');
+		}
+
+		if (v.height > 0) {
+			desc.AppendFormat(L"%dp ", v.height);
+		}
+
+		if (v.fps >= 48) {
+			desc.AppendFormat(L"%dfps ", v.fps);
+		}
+
+		if (v.hdr) {
+			desc.Append(L"HDR ");
+		}
+
+		switch (v.audio) {
+		case acodec_aac:
+			desc.Append(L"AAC ");
+			break;
+		case acodec_opus:
+			desc.Append(L"OPUS ");
+			break;
+		case acodec_unknoun:
+			desc.Append(L"Audio ");
+			break;
+		}
+
+		desc.TrimRight(' ');
+	}
+
+	void SetAFormatDesc(yt_aformat_t& a)
+	{
+		auto& desc = a.desc;
+
+		switch (a.protocol) {
+		case protocol_dash:
+			desc = L"DASH ";
+			break;
+		case protocol_hls:
+			desc = L"HLS ";
+			break;
+		default:
+			desc.Empty();
+		}
+
+		switch (a.codec) {
+		case acodec_aac:
+			desc.Append(L"AAC ");
+			break;
+		case acodec_opus:
+			desc.Append(L"OPUS ");
+			break;
+		case acodec_unknoun:
+			desc.Append(L"Audio ");
+			break;
+		}
+
+		if (desc.IsEmpty()) {
+			desc = a.id;
+			desc.AppendChar(' ');
+		}
+
+		if (a.bitrate > 0) {
+			desc.AppendFormat(L"%.0f kbps", a.bitrate);
+		}
+
+		desc.TrimRight(' ');
+	}
+
 
 	void GetFormatsInfo(const rapidjson::Value* formats, const bool getUserAgent,
 		std::vector<yt_vformat_t>& vformats, std::vector<yt_aformat_t>& aformats)
@@ -412,111 +490,13 @@ namespace YT_DLP
 		std::sort(aformats.begin(), aformats.end(), [](const yt_aformat_t& a, const yt_aformat_t& b) {
 			return (aformat_cmp(a, b) < 0);
 			});
-	}
 
-	CStringW GetVFormatDesc(const yt_vformat_t& v)
-	{
-		CStringW str;
-
-		switch (v.protocol) {
-		case protocol_dash:
-			str = L"DASH ";
-			break;
-		case protocol_hls:
-			str = L"HLS ";
-			break;
+		for (auto& v : vformats) {
+			SetVFormatDesc(v);
 		}
-
-		switch (v.codec) {
-		case vcodec_h264:
-			str.Append(L"H.264 ");
-			break;
-		case vcodec_vp9:
-			str.Append(L"VP9 ");
-			break;
-		case vcodec_av1:
-			str.Append(L"AV1 ");
-			break;
-		case vcodec_unknoun:
-			str.Append(L"Video ");
-			break;
+		for (auto& a : aformats) {
+			SetAFormatDesc(a);
 		}
-
-		if (str.IsEmpty()) {
-			str = v.id;
-			str.AppendChar(' ');
-		}
-
-		if (v.height > 0) {
-			str.AppendFormat(L"%dp ", v.height);
-		}
-
-		if (v.fps >= 48) {
-			str.AppendFormat(L"%dfps ", v.fps);
-		}
-
-		if (v.hdr) {
-			str.Append(L"HDR ");
-		}
-
-		switch (v.audio) {
-		case acodec_aac:
-			str.Append(L"AAC ");
-			break;
-		case acodec_opus:
-			str.Append(L"OPUS ");
-			break;
-		case acodec_unknoun:
-			str.Append(L"Audio ");
-			break;
-		}
-
-		//if (v.bitrate > 0) {
-		//	str.AppendFormat(L"%.0f kbps", v.bitrate);
-		//}
-
-		str.TrimRight(' ');
-
-		return str;
-	}
-
-	CStringW GetAFormatDesc(const yt_aformat_t& a)
-	{
-		CStringW str;
-
-		switch (a.protocol) {
-		case protocol_dash:
-			str = L"DASH ";
-			break;
-		case protocol_hls:
-			str = L"HLS ";
-			break;
-		}
-
-		switch (a.codec) {
-		case acodec_aac:
-			str.Append(L"AAC ");
-			break;
-		case acodec_opus:
-			str.Append(L"OPUS ");
-			break;
-		case acodec_unknoun:
-			str.Append(L"Audio ");
-			break;
-		}
-
-		if (str.IsEmpty()) {
-			str = a.id;
-			str.AppendChar(' ');
-		}
-
-		if (a.bitrate > 0) {
-			str.AppendFormat(L"%.0f kbps", a.bitrate);
-		}
-
-		str.TrimRight(' ');
-
-		return str;
 	}
 
 	struct yt_vformats_stats {
@@ -587,10 +567,10 @@ namespace YT_DLP
 
 #ifdef _DEBUG
 		for (const auto& v : vformats) {
-			DLog(GetVFormatDesc(v));
+			DLog(v.desc);
 		}
 		for (const auto& a : aformats) {
-			DLog(GetAFormatDesc(a));
+			DLog(a.desc);
 		}
 #endif
 
