@@ -59,7 +59,7 @@ static CStringW MakePath(CStringW path)
 		return path;
 	}
 
-	if (::PathIsURLW(path) || Youtube::CheckURL(path)) { // skip URLs
+	if (::PathIsURLW(path) || YT_DLP::CheckYoutubeVideo(path)) { // skip URLs
 		return path;
 	}
 
@@ -1361,7 +1361,7 @@ void CPlayerPlaylistBar::ParsePlayList(std::list<CString>& fns, CSubtitleItemLis
 
 	ResolveLinkFiles(fns);
 
-	if (bCheck && !Youtube::CheckURL(fns.front())) {
+	if (bCheck && !YT_DLP::CheckYoutubeVideo(fns.front())) {
 		std::list<CString> sl;
 		if (SearchFiles(fns.front(), sl, m_bSingleElement)) {
 			bool bDVD_BD = false;

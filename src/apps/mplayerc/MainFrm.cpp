@@ -92,7 +92,7 @@ namespace LAVVideo
 }
 #include "filters/renderer/VideoRenderers/Variables.h"
 
-#include "PlayerYouTubeDL.h"
+#include "PlayerYouTube.h"
 #include "./Controls/MenuEx.h"
 
 #include "Version.h"
@@ -4469,12 +4469,12 @@ void CMainFrame::OnFilePostOpenMedia(std::unique_ptr<OpenMediaData>& pOMD)
 
 	m_wndPlaylistBar.SetCurValid(true);
 
-	if (m_youtubeFields.title.IsEmpty()) {
+	if (m_ytInfo.title.IsEmpty()) {
 		if (CComQIPtr<IBaseFilter> pBF = FindFilter(CLSID_3DYDYoutubeSource, m_pGB)) {
 			if (CComQIPtr<IAMMediaContent, &IID_IAMMediaContent> pAMMC = pBF.p) {
 				CComBSTR bstr;
 				if (SUCCEEDED(pAMMC->get_Title(&bstr)) && bstr.Length()) {
-					m_youtubeFields.title = bstr;
+					m_ytInfo.title = bstr;
 
 					CString ext = L".mp4";
 					BeginEnumPins(pBF, pEP, pPin) {
@@ -4493,8 +4493,8 @@ void CMainFrame::OnFilePostOpenMedia(std::unique_ptr<OpenMediaData>& pOMD)
 					}
 					EndEnumPins;
 
-					m_youtubeFields.fname =  m_youtubeFields.title + ext;
-					FixFilename(m_youtubeFields.fname);
+					m_ytInfo.fname = m_ytInfo.title + ext;
+					FixFilename(m_ytInfo.fname);
 				}
 			}
 		}
@@ -6038,7 +6038,7 @@ void CMainFrame::OnFileSaveAs()
 	CStringW in = m_PlaybackInfo.RenderedPath;
 	CStringW out = in;
 
-	if (!m_youtubeFields.fname.IsEmpty()) {
+	if (!m_ytInfo.fname.IsEmpty()) {
 		out = GetAltFileName();
 		ext = GetFileExt(out).MakeLower();
 	} else {
@@ -6105,13 +6105,13 @@ void CMainFrame::OnFileSaveAs()
 	std::list<CSaveTaskDlg::SaveItem_t> saveItems;
 	CString ffmpegpath;
 
-	if (m_youtubeFields.fname.GetLength()) {
+	if (m_ytInfo.fname.GetLength()) {
 		if (m_bAudioOnly) {
 			saveItems.emplace_back('a', in, GetAltFileName(), "");
 			if (ext == L".m4a" || ext == L".mka") {
-				auto thumbnail_ext = m_youtubeFields.thumbnailUrl.Mid(m_youtubeFields.thumbnailUrl.ReverseFind('.')).MakeLower();
+				auto thumbnail_ext = m_ytInfo.thumbnailUrl.Mid(m_ytInfo.thumbnailUrl.ReverseFind('.')).MakeLower();
 				if (thumbnail_ext == L".jpg" || thumbnail_ext == L".webp") {
-					saveItems.emplace_back('t', m_youtubeFields.thumbnailUrl, thumbnail_ext, "");
+					saveItems.emplace_back('t', m_ytInfo.thumbnailUrl, thumbnail_ext, "");
 					ffmpegpath = GetFullExePath(s.strFFmpegExePath, true);
 				}
 			}
@@ -6557,7 +6557,7 @@ CStringW CMainFrame::CreateSnapShotFileName()
 	CStringW filename = L"snapshot";
 
 	if (GetPlaybackMode() == PM_FILE) {
-		if (m_youtubeFields.fname.GetLength()) {
+		if (m_ytInfo.fname.GetLength()) {
 			filename = GetAltFileName();
 		}else {
 			filename = GetFileName(GetCurFileName());
@@ -6669,7 +6669,7 @@ void CMainFrame::OnFileSaveThumbnails()
 	CStringW prefix = L"thumbs";
 	if (GetPlaybackMode() == PM_FILE) {
 		CString path = GetFileName(GetCurFileName());
-		if (!m_youtubeFields.fname.IsEmpty()) {
+		if (!m_ytInfo.fname.IsEmpty()) {
 			path = GetAltFileName();
 		}
 
@@ -6944,7 +6944,7 @@ void CMainFrame::OnFileProperties()
 
 	std::list<CString> files;
 	if (GetPlaybackMode() == PM_FILE) {
-		if (m_youtubeFields.fname.GetLength()) {
+		if (m_ytInfo.fname.GetLength()) {
 			files.emplace_back(m_wndPlaylistBar.GetCurFileName());
 		}
 		else {
@@ -8144,8 +8144,8 @@ void CMainFrame::OnPlayPlay()
 	if (m_bfirstPlay) {
 		m_bfirstPlay = false;
 
-		if (!m_youtubeFields.title.IsEmpty()) {
-			strOSD = m_youtubeFields.title;
+		if (!m_ytInfo.title.IsEmpty()) {
+			strOSD = m_ytInfo.title;
 		} else if (::PathIsURLW(GetCurFileName())) {
 			CPlaylistItem pli;
 			if (m_wndPlaylistBar.GetCur(pli) && !pli.m_label.IsEmpty()) {
@@ -10045,9 +10045,9 @@ void CMainFrame::OnNavigateChapters(UINT nID)
 			id -= m_BDPlaylists.size();
 		}
 
-		if (m_youtubeUrllist.size() > 1 && id < m_youtubeUrllist.size()) {
+		if (m_ytVideoFormats.size() > 1 && id < m_ytVideoFormats.size()) {
 			UINT idx = 0;
-			for (const auto& item : m_youtubeUrllist) {
+			for (const auto& item : m_ytVideoFormats) {
 				if (idx == id && item.url != m_PlaybackInfo.RenderedPath) {
 					const int tagSelected = item.profile->iTag;
 					m_bYoutubeOpened = true;
@@ -10065,8 +10065,8 @@ void CMainFrame::OnNavigateChapters(UINT nID)
 			}
 		}
 
-		if (m_youtubeUrllist.size() > 1) {
-			id -= m_youtubeUrllist.size();
+		if (m_ytVideoFormats.size() > 1) {
+			id -= m_ytVideoFormats.size();
 		}
 
 		if (id >= 0 && id < (UINT)m_pCB->ChapGetCount() && m_pCB->ChapGetCount() > 1) {
@@ -12303,10 +12303,10 @@ CString CMainFrame::OpenFile(OpenFileData* pOFD)
 
 	http::userAgent = s.strUserAgent;
 
-	if (!m_youtubeUrllist.empty()) {
+	if (!m_ytVideoFormats.empty()) {
 		youtubeUrl = pOFD->fi.GetPath();
-		if (!m_youtubeFields.userAgent.IsEmpty()) {
-			http::userAgent = m_youtubeFields.userAgent;
+		if (!m_ytInfo.userAgent.IsEmpty()) {
+			http::userAgent = m_ytInfo.userAgent;
 		}
 		Content::Online::Disconnect(youtubeUrl);
 
@@ -12314,29 +12314,29 @@ CString CMainFrame::OpenFile(OpenFileData* pOFD)
 		pOFD->auds.clear();
 		pOFD->subs.clear();
 
-		auto it = std::find_if(m_youtubeUrllist.cbegin(), m_youtubeUrllist.cend(), [&s](const Youtube::YoutubeUrllistItem& item) {
+		auto it = std::find_if(m_ytVideoFormats.cbegin(), m_ytVideoFormats.cend(), [&s](const Youtube::YoutubeUrllistItem& item) {
 			return item.profile->iTag == s.iYoutubeTagSelected;
 		});
-		if (it != m_youtubeUrllist.cend()) {
+		if (it != m_ytVideoFormats.cend()) {
 			pOFD->fi = it->url;
 
-			if (it->profile->type == Youtube::y_video && !m_youtubeAudioUrllist.empty()) {
-				const auto audio_item = Youtube::SelectAudioStream(m_youtubeAudioUrllist);
+			if (it->profile->type == Youtube::y_video && !m_ytAudioFormats.empty()) {
+				const auto audio_item = Youtube::SelectAudioStream(m_ytAudioFormats);
 				pOFD->auds.emplace_back(audio_item->url);
 			}
 
 			pOFD->subs = m_lastOMD->subs;
 
 			if (it->profile->type == Youtube::y_audio) {
-				m_youtubeFields.fname.Format(L"%s.%s", m_youtubeFields.title.GetString(), it->profile->ext);
+				m_ytInfo.fname.Format(L"%s.%s", m_ytInfo.title.GetString(), it->profile->ext);
 			} else {
-				m_youtubeFields.fname.Format(L"%s.%dp.%s", m_youtubeFields.title.GetString(), it->profile->quality, it->profile->ext);
+				m_ytInfo.fname.Format(L"%s.%dp.%s", m_ytInfo.title.GetString(), it->profile->quality, it->profile->ext);
 			}
-			FixFilename(m_youtubeFields.fname);
+			FixFilename(m_ytInfo.fname);
 		}
 
 		m_PlaybackInfo.RenderedPath = pOFD->fi.GetPath();
-		m_wndPlaylistBar.SetCurLabel(m_youtubeFields.title);
+		m_wndPlaylistBar.SetCurLabel(m_ytInfo.title);
 	}
 	/*
 	else if (s.bYoutubePageParser && pOFD->auds.empty()) {
@@ -12417,25 +12417,26 @@ CString CMainFrame::OpenFile(OpenFileData* pOFD)
 					OpenFileData OFD;
 					ok = YT_DLP::Parse_URL(
 						url,
-						m_youtubeFields,
-						m_youtubeUrllist,
-						m_youtubeAudioUrllist,
+						m_ytInfo,
+						m_ytVideoFormats,
+						m_ytAudioFormats,
 						&OFD
 					);
+
 					if (ok && m_pGB->ShouldOperationContinue() == S_OK) {
 						youtubeUrl = url;
-						if (!m_youtubeFields.userAgent.IsEmpty()) {
-							http::userAgent = m_youtubeFields.userAgent;
+						if (!m_ytInfo.userAgent.IsEmpty()) {
+							http::userAgent = m_ytInfo.userAgent;
 						}
 						Content::Online::Disconnect(url);
 
 						*pOFD = OFD;
 						m_PlaybackInfo.RenderedPath = pOFD->fi.GetPath();
-						m_wndPlaylistBar.SetCurLabel(m_youtubeFields.title);
+						m_wndPlaylistBar.SetCurLabel(m_ytInfo.title);
 					} else {
-						m_youtubeFields.Empty();
-						m_youtubeUrllist.clear();
-						m_youtubeAudioUrllist.clear();
+						m_ytInfo.Clear();
+						m_ytVideoFormats.clear();
+						m_ytAudioFormats.clear();
 					}
 				}
 			}
@@ -12674,8 +12675,8 @@ CString CMainFrame::OpenFile(OpenFileData* pOFD)
 		}
 	}
 
-	if (!m_youtubeFields.chaptersList.empty()) {
-		AddCustomChapters(m_youtubeFields.chaptersList);
+	if (!m_ytInfo.chapters.empty()) {
+		AddCustomChapters(m_ytInfo.chapters);
 	}
 
 	if (pOFD->fi.Valid()) {
@@ -12687,8 +12688,8 @@ CString CMainFrame::OpenFile(OpenFileData* pOFD)
 				m_SessionInfo.NewPath(fn);
 			}
 
-			if (m_youtubeFields.title.GetLength()) {
-				m_SessionInfo.Title = m_youtubeFields.title;
+			if (m_ytInfo.title.GetLength()) {
+				m_SessionInfo.Title = m_ytInfo.title;
 			}
 			else if (m_LastOpenBDPath.GetLength()) {
 				CString fn2 = L"Blu-ray";
@@ -13494,8 +13495,8 @@ void CMainFrame::OpenSetupInfoBar()
 			EndEnumFilters;
 		}
 
-		if (!m_youtubeFields.title.IsEmpty()) {
-			m_wndInfoBar.SetLine(ResStr(IDS_INFOBAR_TITLE), m_youtubeFields.title);
+		if (!m_ytInfo.title.IsEmpty()) {
+			m_wndInfoBar.SetLine(ResStr(IDS_INFOBAR_TITLE), m_ytInfo.title);
 			filled = true;
 		}
 
@@ -14633,12 +14634,10 @@ void CMainFrame::CloseMediaPrivate()
 	m_PlaybackInfo.Clear();
 
 	if (!m_bYoutubeOpened) {
-		m_youtubeFields.Empty();
-		m_youtubeUrllist.clear();
-		m_youtubeAudioUrllist.clear();
+		m_ytInfo.Clear();
+		m_ytVideoFormats.clear();
+		m_ytAudioFormats.clear();
 		s.iYoutubeTagSelected = 0;
-
-		YT_DLP::Clear();
 	}
 	m_youtubeThumbnailData.clear();
 	m_bYoutubeOpened = false;
@@ -15681,21 +15680,21 @@ void CMainFrame::SetupNavChaptersSubMenu()
 				const CString time = L"[" + ReftimeToString2(Item.Duration()) + L"]";
 				submenu.AppendMenuW(flags, id++, GetFileName(Item.m_strFileName) + '\t' + time);
 			}
-		} else if (m_youtubeUrllist.size() > 1) {
-			for (size_t i = 0; i < m_youtubeUrllist.size(); i++) {
+		} else if (m_ytVideoFormats.size() > 1) {
+			for (size_t i = 0; i < m_ytVideoFormats.size(); i++) {
 				UINT flags = MF_BYCOMMAND | MF_STRING | MF_ENABLED;
 
-				if (m_youtubeUrllist[i].url == m_PlaybackInfo.RenderedPath) {
+				if (m_ytVideoFormats[i].url == m_PlaybackInfo.RenderedPath) {
 					flags |= MF_CHECKED | MFT_RADIOCHECK;
 				}
 
 				if (i > 0) {
-					const auto& prev_profile = m_youtubeUrllist[i - 1].profile;
-					const auto& profile = m_youtubeUrllist[i].profile;
+					const auto& prev_profile = m_ytVideoFormats[i - 1].profile;
+					const auto& profile = m_ytVideoFormats[i].profile;
 
 					if (prev_profile->type != Youtube::y_audio
 							&& (prev_profile->format != profile->format || profile->type == Youtube::y_audio)) {
-						if (m_youtubeUrllist.size() > 20 && profile->format == Youtube::y_mp4_av1) {
+						if (m_ytVideoFormats.size() > 20 && profile->format == Youtube::y_mp4_av1) {
 							flags |= MF_MENUBARBREAK;
 						} else {
 							submenu.AppendMenuW(MF_SEPARATOR);
@@ -15703,7 +15702,7 @@ void CMainFrame::SetupNavChaptersSubMenu()
 					}
 				}
 
-				submenu.AppendMenuW(flags, id++, m_youtubeUrllist[i].title);
+				submenu.AppendMenuW(flags, id++, m_ytVideoFormats[i].desc);
 			}
 		}
 
@@ -15736,7 +15735,7 @@ void CMainFrame::SetupNavChaptersSubMenu()
 
 				if (id != ID_NAVIGATE_CHAP_SUBITEM_START && i == 0) {
 					//pSub->AppendMenuW(MF_SEPARATOR | MF_ENABLED);
-					if (!m_BDPlaylists.empty() || m_youtubeUrllist.size() > 1) {
+					if (!m_BDPlaylists.empty() || m_ytVideoFormats.size() > 1) {
 						flags |= MF_MENUBARBREAK;
 					}
 				}
@@ -19848,9 +19847,9 @@ HRESULT CMainFrame::SetAudioPicture(BOOL show)
 			}
 			EndEnumFilters;
 
-			if (!bLoadRes && !m_youtubeFields.thumbnailUrl.IsEmpty()) {
+			if (!bLoadRes && !m_ytInfo.thumbnailUrl.IsEmpty()) {
 				CHTTPAsync HTTPAsync;
-				if (SUCCEEDED(HTTPAsync.Connect(m_youtubeFields.thumbnailUrl.GetString(), http::connectTimeout))) {
+				if (SUCCEEDED(HTTPAsync.Connect(m_ytInfo.thumbnailUrl.GetString(), http::connectTimeout))) {
 					const auto contentLength = HTTPAsync.GetLenght();
 					if (contentLength) {
 						m_youtubeThumbnailData.resize(contentLength);
@@ -20077,8 +20076,8 @@ void CMainFrame::CreateCaptureWindow()
 const CString CMainFrame::GetAltFileName()
 {
 	CString ret;
-	if (!m_youtubeFields.fname.IsEmpty()) {
-		ret = m_youtubeFields.fname;
+	if (!m_ytInfo.fname.IsEmpty()) {
+		ret = m_ytInfo.fname;
 		FixFilename(ret);
 	}
 
@@ -20285,7 +20284,7 @@ void CMainFrame::MakeDVDLabel(CString path, CString& label, CString* pDVDlabel)
 
 CString CMainFrame::GetCurFileName()
 {
-	CString fn = !m_youtubeFields.fname.IsEmpty() ? m_wndPlaylistBar.GetCurFileName() : m_PlaybackInfo.RenderedPath;
+	CString fn = !m_ytInfo.fname.IsEmpty() ? m_wndPlaylistBar.GetCurFileName() : m_PlaybackInfo.RenderedPath;
 
 	if (fn.IsEmpty() && m_pMainFSF) {
 		LPOLESTR pFN = nullptr;

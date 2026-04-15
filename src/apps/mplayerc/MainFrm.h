@@ -39,7 +39,7 @@
 #include "OpenMediaData.h"
 #include "FileDropTarget.h"
 #include "KeyProvider.h"
-#include "PlayerYouTube.h"
+#include "PlayerYouTubeDL.h"
 #include "SvgHelper.h"
 #include "HistoryDlg.h"
 
@@ -1202,10 +1202,12 @@ public:
 	long		m_lSubtitleShift;
 	__int64		m_rtCurSubPos;
 
-	Youtube::YoutubeFields m_youtubeFields;
-	Youtube::YoutubeUrllist m_youtubeUrllist;
-	Youtube::YoutubeUrllist m_youtubeAudioUrllist;
 	std::vector<uint8_t> m_youtubeThumbnailData;
+
+	YT_DLP::yt_info_t m_ytInfo;
+	std::vector<YT_DLP::yt_vformat_t> m_ytVideoFormats;
+	std::vector<YT_DLP::yt_aformat_t> m_ytAudioFormats;
+
 	bool m_bYoutubeOpened = false;
 	std::atomic_bool m_bYoutubeOpening = false;
 

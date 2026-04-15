@@ -1,6 +1,6 @@
 /*
  * (C) 2003-2006 Gabest
- * (C) 2006-2025 see Authors.txt
+ * (C) 2006-2026 see Authors.txt
  *
  * This file is part of MPC-BE.
  *
@@ -195,35 +195,35 @@ BOOL CPPageFileInfoClip::OnInitDialog()
 
 	const CMainFrame* pMainFrame = AfxGetMainFrame();
 	if (pMainFrame) {
-		if (!pMainFrame->m_youtubeFields.title.IsEmpty()) {
-			m_clip = pMainFrame->m_youtubeFields.title;
+		if (!pMainFrame->m_ytInfo.title.IsEmpty()) {
+			m_clip = pMainFrame->m_ytInfo.title;
 		}
 
-		if (!pMainFrame->m_youtubeFields.author.IsEmpty()) {
-			m_author = pMainFrame->m_youtubeFields.author;
+		if (!pMainFrame->m_ytInfo.author.IsEmpty()) {
+			m_author = pMainFrame->m_ytInfo.author;
 		}
 
-		if (pMainFrame->m_youtubeFields.dtime.wYear) {
-			if (!pMainFrame->m_youtubeFields.dtime.wHour
-					&& !pMainFrame->m_youtubeFields.dtime.wMinute
-					&& !pMainFrame->m_youtubeFields.dtime.wSecond) {
+		if (pMainFrame->m_ytInfo.dtime.wYear) {
+			if (!pMainFrame->m_ytInfo.dtime.wHour
+					&& !pMainFrame->m_ytInfo.dtime.wMinute
+					&& !pMainFrame->m_ytInfo.dtime.wSecond) {
 				m_descText.Format(ResStr(IDS_PUBLISHED) + L"%04hu-%02hu-%02hu\r\n\r\n",
-								  pMainFrame->m_youtubeFields.dtime.wYear,
-								  pMainFrame->m_youtubeFields.dtime.wMonth,
-								  pMainFrame->m_youtubeFields.dtime.wDay);
+								  pMainFrame->m_ytInfo.dtime.wYear,
+								  pMainFrame->m_ytInfo.dtime.wMonth,
+								  pMainFrame->m_ytInfo.dtime.wDay);
 			} else {
 				m_descText.Format(ResStr(IDS_PUBLISHED) + L"%04hu-%02hu-%02hu %02hu:%02hu:%02hu\r\n\r\n",
-								  pMainFrame->m_youtubeFields.dtime.wYear,
-								  pMainFrame->m_youtubeFields.dtime.wMonth,
-								  pMainFrame->m_youtubeFields.dtime.wDay,
-								  pMainFrame->m_youtubeFields.dtime.wHour,
-								  pMainFrame->m_youtubeFields.dtime.wMinute,
-								  pMainFrame->m_youtubeFields.dtime.wSecond);
+								  pMainFrame->m_ytInfo.dtime.wYear,
+								  pMainFrame->m_ytInfo.dtime.wMonth,
+								  pMainFrame->m_ytInfo.dtime.wDay,
+								  pMainFrame->m_ytInfo.dtime.wHour,
+								  pMainFrame->m_ytInfo.dtime.wMinute,
+								  pMainFrame->m_ytInfo.dtime.wSecond);
 			}
 		}
 
-		if (!pMainFrame->m_youtubeFields.content.IsEmpty()) {
-			m_descText.Append(pMainFrame->m_youtubeFields.content);
+		if (!pMainFrame->m_ytInfo.content.IsEmpty()) {
+			m_descText.Append(pMainFrame->m_ytInfo.content);
 		}
 	}
 

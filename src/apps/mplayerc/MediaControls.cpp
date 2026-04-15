@@ -1,5 +1,5 @@
 /*
-* (C) 2021-2023 see Authors.txt
+* (C) 2021-2026 see Authors.txt
 *
 * This file is part of MPC-BE.
 *
@@ -149,7 +149,7 @@ bool CMediaControls::Update()
 
 	if (m_pMainFrame->m_eMediaLoadState == MLS_LOADED) {
 		auto title = m_pMainFrame->GetTitleOrFileNameOrPath();
-		auto author = m_pMainFrame->m_youtubeFields.author;
+		auto author = m_pMainFrame->m_ytInfo.author;
 		if (m_pMainFrame->m_bAudioOnly) {
 			m_pDisplay->put_Type(MediaPlaybackType::MediaPlaybackType_Music);
 

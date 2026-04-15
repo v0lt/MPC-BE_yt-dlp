@@ -20,10 +20,38 @@
 
 #pragma once
 
-#include "PlayerYouTube.h"
+#include "OpenMediaData.h"
 
 namespace YT_DLP
 {
+	struct yt_info_t {
+		CStringW       author;
+		CStringW       title;
+		CStringW       content;
+		CStringW       fname;
+		SYSTEMTIME     dtime = { 0 };
+		REFERENCE_TIME duration = 0;
+		CStringW       thumbnailUrl;
+		CStringW       userAgent;
+		std::vector<Chapters> chapters;
+		int            idxVideo = -1;
+		int            idxAudio = -1;
+
+		void Clear() {
+			author.Empty();
+			title.Empty();
+			content.Empty();
+			fname.Empty();
+			dtime = {};
+			duration = 0;
+			thumbnailUrl.Empty();
+			userAgent.Empty();
+			chapters.clear();
+			idxVideo = -1;
+			idxAudio = -1;
+		}
+	};
+
 	enum yt_vcodec_type {
 		vcodec_unknoun = -1,
 		vcodec_h264 = 0,
@@ -52,7 +80,7 @@ namespace YT_DLP
 		float bitrate = 0;
 		int fps = 0;
 		bool hdr = false;
-		CStringA url;
+		CStringW url;
 		CStringA user_agent;
 		CStringW desc;
 	};
@@ -64,17 +92,21 @@ namespace YT_DLP
 		float bitrate = 0;
 		CStringA language;
 		int language_preference = 0;
-		CStringA url;
+		CStringW url;
 		CStringA user_agent;
 		CStringW desc;
 	};
 
+	bool CheckYoutubeVideo(CStringW url);
+	bool CheckYoutubePlaylist(CString url);
+
+	////////////////////////////////////////////////
+
 	bool Parse_URL(
 		const CStringW& url,        // input parameter
-		Youtube::YoutubeFields& y_fields,
-		Youtube::YoutubeUrllist& youtubeUrllist,
-		Youtube::YoutubeUrllist& youtubeAudioUrllist,
+		yt_info_t& ytInfo,
+		std::vector<yt_vformat_t>& vformats,
+		std::vector<yt_aformat_t>& aformats,
 		OpenFileData* pOFD
 	);
-	void Clear();
 }

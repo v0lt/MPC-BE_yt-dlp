@@ -800,8 +800,8 @@ void CAppSettings::ResetSettings()
 
 	bYdlEnable      = false;
 	strYdlExePath   = L"yt-dlp.exe";
-	iYdlVcodec      = Youtube::y_webm_vp9;
-	iYdlAcodec      = Youtube::y_webm_opus;
+	iYdlVcodec      = YT_DLP::vcodec_vp9;
+	iYdlAcodec      = YT_DLP::acodec_opus;
 	iYdlMaxHeight   = 720;
 	bYdlHighFps     = false;
 	bYdlHDR         = false;
@@ -1989,12 +1989,12 @@ void CAppSettings::SaveSettings()
 	profile.WriteBool  (IDS_R_ONLINESERVICES, IDS_RS_YDL_ENABLE,      bYdlEnable);
 	profile.WriteString(IDS_R_ONLINESERVICES, IDS_RS_YDL_EXEPATH,     strYdlExePath);
 	profile.WriteString(IDS_R_ONLINESERVICES, IDS_RS_YDL_VCODEC,
-		(iYdlVcodec == Youtube::y_webm_vp9) ? L"VP9"
-		: (iYdlVcodec == Youtube::y_mp4_av1) ? L"AV1"
-		: L"H264");
+		(iYdlVcodec == YT_DLP::vcodec_h264) ? L"H264"
+		: (iYdlVcodec == YT_DLP::vcodec_av1) ? L"AV1"
+		: L"VP9");
 	profile.WriteString(IDS_R_ONLINESERVICES, IDS_RS_YDL_ACODEC,
-		(iYdlAcodec == Youtube::y_webm_opus) ? L"OPUS"
-		: L"AAC");
+		(iYdlAcodec == YT_DLP::acodec_aac) ? L"AAC"
+		: L"OPUS");
 	profile.WriteInt   (IDS_R_ONLINESERVICES, IDS_RS_YDL_MAXHEIGHT,   iYdlMaxHeight);
 	profile.WriteBool  (IDS_R_ONLINESERVICES, IDS_RS_YDL_HIGHFPS,     bYdlHighFps);
 	profile.WriteBool  (IDS_R_ONLINESERVICES, IDS_RS_YDL_HDR,         bYdlHDR);
